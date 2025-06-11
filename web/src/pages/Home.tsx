@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import UrlForm from '../components/UrlForm';
+import { UrlForm } from '../components/UrlForm';
 import UrlList from '../components/UrlList';
 import Loading from '../components/Loading';
 import EmptyState from '../components/EmptyState';

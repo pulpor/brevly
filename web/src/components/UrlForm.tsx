@@ -1,64 +1,59 @@
-import React, { useState } from 'react';
-import { http } from '../api/http';
-import type { Link } from '../types/link';
+import { useState } from "react";
+import { http } from "../api/http";
+import type { Link } from "../types/link";
 
+// Define props interface
 interface UrlFormProps {
   setLinks: React.Dispatch<React.SetStateAction<Link[]>>;
 }
 
-const UrlForm: React.FC<UrlFormProps> = ({ setLinks }) => {
-  const [originalUrl, setOriginalUrl] = useState<string>('');
-  const [shortUrl, setShortUrl] = useState<string>('');
-  const [error, setError] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
+export function UrlForm({ setLinks }: UrlFormProps) {
+  const [link, setLink] = useState("");
+  const [code, setCode] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-
+    if (!link || !code) {
+      alert("URL and short code are required");
+      return;
+    }
+    if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/.test(link)) {
+      alert("Invalid URL");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(code)) {
+      alert("Short code must be alphanumeric with _ or -");
+      return;
+    }
     try {
-      const link = await http.shortLink.create({
-        link: originalUrl,
-        code: shortUrl || `brev${Math.random().toString(36).substring(2, 8)}`,
-      });
-      setLinks((prev) => [...prev, link]);
-      setOriginalUrl('');
-      setShortUrl('');
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Erro ao criar o link');
-      }
-    } finally {
-      setLoading(false);
+      const newLink = await http.shortLink.create({ link, code });
+      setLinks((prev) => [newLink, ...prev]);
+      alert("Link created!");
+      setLink("");
+      setCode("");
+    } catch (error) {
+      console.error("Error creating link:", error);
+      alert("Failed to create link");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="url-form">
+    <form onSubmit={handleSubmit}>
       <input
         type="url"
-        value={originalUrl}
-        onChange={(e) => setOriginalUrl(e.target.value)}
-        placeholder="Digite a URL original"
+        value={link}
+        onChange={(e) => setLink(e.target.value)}
+        placeholder="Enter URL"
         required
-        disabled={loading}
       />
       <input
         type="text"
-        value={shortUrl}
-        onChange={(e) => setShortUrl(e.target.value)}
-        placeholder="Encurtamento personalizado (opcional)"
-        disabled={loading}
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Short code"
+        required
       />
-      <button type="submit" disabled={loading}>
-        {loading ? 'Encurtando...' : 'Encurtar'}
-      </button>
-      {error && <p className="error">{error}</p>}
+      <button type="submit">Create Link</button>
     </form>
   );
-};
-
-export default UrlForm;
+}

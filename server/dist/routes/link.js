@@ -1,59 +1,57 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
+exports.registerLink = registerLink;
 const linkService_1 = require("../services/linkService");
-const router = express_1.default.Router();
-router.get('/link/:code', async (req, res) => {
-    try {
-        const link = (0, linkService_1.getLinkByCode)(req.params.code);
-        if (!link) {
-            return res.status(404).json({ error: 'Link não encontrado' });
+async function registerLink(fastify) {
+    fastify.get('/', async (_request, reply) => {
+        try {
+            const links = await (0, linkService_1.getAllLinks)();
+            return reply.status(200).send(links);
         }
-        res.json({ link: link.link });
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-router.get('/link', async (_req, res) => {
-    try {
-        const links = (0, linkService_1.getAllLinks)();
-        res.json(links);
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-router.post('/link', async (req, res) => {
-    try {
-        const { link, code } = req.body;
-        const newLink = (0, linkService_1.createLink)(link, code);
-        res.status(201).json(newLink);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-router.delete('/link', async (req, res) => {
-    try {
-        const { code } = req.body;
-        const success = (0, linkService_1.deleteLink)(code);
-        res.json(success);
-    }
-    catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-router.get('/link/export', async (_req, res) => {
-    try {
-        const url = (0, linkService_1.exportLinksToCsv)();
-        res.json({ url });
-    }
-    catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-exports.default = router;
+        catch (error) {
+            return reply.status(500).send({ error: error.message });
+        }
+    });
+    fastify.get('/:code', async (request, reply) => {
+        try {
+            const { code } = request.params;
+            const link = await (0, linkService_1.getLinkByCode)(code);
+            if (!link) {
+                return reply.status(404).send({ error: 'Link não encontrado' });
+            }
+            return reply.status(200).send({ link: link.original_url });
+        }
+        catch (error) {
+            return reply.status(400).send({ error: error.message });
+        }
+    });
+    fastify.post('/', async (request, reply) => {
+        try {
+            const { link, code } = request.body;
+            const newLink = await (0, linkService_1.createLink)(link, code);
+            return reply.status(201).send(newLink);
+        }
+        catch (error) {
+            return reply.status(400).send({ error: error.message });
+        }
+    });
+    fastify.delete('/', async (request, reply) => {
+        try {
+            const { code } = request.body;
+            const success = await (0, linkService_1.deleteLink)(code);
+            return reply.status(200).send(success);
+        }
+        catch (error) {
+            return reply.status(400).send({ error: error.message });
+        }
+    });
+    fastify.get('/export', async (_request, reply) => {
+        try {
+            const url = await (0, linkService_1.exportLinksToCsv)();
+            return reply.status(200).send({ url });
+        }
+        catch (error) {
+            return reply.status(500).send({ error: error.message });
+        }
+    });
+}

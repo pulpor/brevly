@@ -1,6 +1,7 @@
 export interface Link {
-  link: string;
-  code: string;
+  id: string;
+  original_url: string;
+  short_code: string;
   clicks: number;
-  createdAt: string;
+  created_at: string;
 }

@@ -1,56 +1,67 @@
-import express, { Request, Response } from 'express';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createLink, getLinkByCode, getAllLinks, deleteLink, exportLinksToCsv } from '../services/linkService';
 
-const router = express.Router();
+interface LinkData {
+  Body: { link: string; code: string };
+}
 
-router.get('/link/:code', async (req: Request, res: Response) => {
-  try {
-    const link = getLinkByCode(req.params.code);
-    if (!link) {
-      return res.status(404).json({ error: 'Link não encontrado' });
+interface DeleteParams {
+  Body: { code: string };
+}
+
+interface CodeParams {
+  Params: { code: string };
+}
+
+export async function registerLink(fastify: FastifyInstance) {
+  fastify.get('/', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const links = await getAllLinks();
+      return reply.status(200).send(links);
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message });
     }
-    res.json({ link: link.link });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
+  });
 
-router.get('/link', async (_req: Request, res: Response) => {
-  try {
-    const links = getAllLinks();
-    res.json(links);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
+  fastify.get('/:code', async (request: FastifyRequest<CodeParams>, reply: FastifyReply) => {
+    try {
+      const { code } = request.params;
+      const link = await getLinkByCode(code);
+      if (!link) {
+        return reply.status(404).send({ error: 'Link não encontrado' });
+      }
+      return reply.status(200).send({ link: link.original_url });
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+  });
 
-router.post('/link', async (req: Request, res: Response) => {
-  try {
-    const { link, code } = req.body as { link: string; code: string };
-    const newLink = createLink(link, code);
-    res.status(201).json(newLink);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
+  fastify.post('/', async (request: FastifyRequest<LinkData>, reply: FastifyReply) => {
+    try {
+      const { link, code } = request.body;
+      const newLink = await createLink(link, code);
+      return reply.status(201).send(newLink);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+  });
 
-router.delete('/link', async (req: Request, res: Response) => {
-  try {
-    const { code } = req.body as { code: string };
-    const success = deleteLink(code);
-    res.json(success);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-});
+  fastify.delete('/', async (request: FastifyRequest<DeleteParams>, reply: FastifyReply) => {
+    try {
+      const { code } = request.body;
+      const success = await deleteLink(code);
+      return reply.status(200).send(success);
+    } catch (error: any) {
+      return reply.status(400).send({ error: error.message });
+    }
+  });
 
-router.get('/link/export', async (_req: Request, res: Response) => {
-  try {
-    const url = exportLinksToCsv();
-    res.json({ url });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-export default router;
+  fastify.get('/export', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const url = await exportLinksToCsv();
+      return reply.status(200).send({ url });
+    } catch (error: any) {
+      return reply.status(500).send({ error: error.message });
+    }
+  });
+}
